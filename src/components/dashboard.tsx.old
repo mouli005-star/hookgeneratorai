@@ -1,0 +1,328 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Sparkles, History, Zap, Settings, ArrowRight, User, LogOut } from "lucide-react"
+import { toast } from "sonner"
+import { auth, db } from "@/lib/firebase"
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth"
+import { doc, onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore"
+
+export default function Dashboard() {
+    const [prompt, setPrompt] = useState("")
+    const [result, setResult] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
+    const [user, setUser] = useState<FirebaseUser | null>(null)
+    const [history, setHistory] = useState<any[]>([])
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser)
+            if (currentUser) {
+                // Listen to history
+                const q = query(
+                    collection(db, "history"),
+                    where("uid", "==", currentUser.uid),
+                    limit(5)
+                )
+                const unsubHistory = onSnapshot(q, (snapshot) => {
+                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    setHistory(docs)
+                })
+
+                return () => {
+                    unsubHistory()
+                }
+            }
+        })
+
+        return () => unsubscribe()
+    }, [])
+
+    const handleLogin = async () => {
+        try {
+            const provider = new GoogleAuthProvider()
+            await signInWithPopup(auth, provider)
+            toast.success("Welcome to HookMaster AI!")
+        } catch (error) {
+            toast.error("Failed to sign in")
+        }
+    }
+
+    const handleSignOut = async () => {
+        await signOut(auth)
+        setResult("")
+        toast.success("Signed out successfully")
+    }
+
+    const handleGenerate = async (type: "hook" | "rewrite") => {
+        if (!user) {
+            toast.error("Please sign in to generate content")
+            return
+        }
+
+        if (!prompt) {
+            toast.error("Please enter a prompt first!")
+            return
+        }
+
+        setIsLoading(true)
+        setResult("")
+
+        try {
+            const token = await user.getIdToken()
+            const response = await fetch("http://localhost:8000/api/v1/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-FB-Token": token
+                },
+                body: JSON.stringify({ prompt, type }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.detail || "Failed to generate content")
+            }
+
+            const data = await response.json()
+            setResult(data.content)
+            toast.success("Generation complete!")
+        } catch (error: any) {
+            console.error(error)
+            toast.error(error.message || "Something went wrong.")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return (
+        <div className="min-h-screen gradient-bg p-4 md:p-8 font-sans selection:bg-primary/30">
+            <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+                {/* Header */}
+                <header className="flex justify-between items-center glass-morphism p-4 md:p-6 rounded-3xl border border-white/10 shadow-2xl">
+                    <div className="flex items-center space-x-3 group cursor-pointer">
+                        <div className="bg-gradient-to-tr from-primary to-purple-600 p-2.5 rounded-2xl shadow-lg shadow-primary/20 transition-transform group-hover:scale-110 duration-300">
+                            <Sparkles className="text-white w-6 h-6 animate-pulse" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black tracking-tight leading-none">
+                                HookMaster <span className="gradient-text">AI</span>
+                            </h1>
+                            <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold mt-1">Professional Content Studio</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        {user ? (
+                            <div className="flex items-center space-x-4 bg-white/5 py-1.5 pl-4 pr-1.5 rounded-2xl border border-white/5 backdrop-blur-md">
+                                <div className="hidden md:flex flex-col items-end mr-2">
+                                    <span className="text-sm font-bold text-white/90">{user.displayName || "Content Master"}</span>
+                                </div>
+                                <div className="relative group">
+                                    <img
+                                        src={user.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"}
+                                        alt="Avatar"
+                                        className="w-10 h-10 rounded-xl border-2 border-primary/50 group-hover:border-primary transition-all duration-300 shadow-lg"
+                                    />
+                                    <button
+                                        onClick={handleSignOut}
+                                        className="absolute -top-1 -right-1 bg-destructive text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:scale-110"
+                                    >
+                                        <LogOut className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <Button
+                                onClick={handleLogin}
+                                className="rounded-2xl px-8 bg-white text-black hover:bg-white/90 font-bold shadow-xl shadow-white/10 transition-all hover:-translate-y-0.5"
+                            >
+                                <User className="mr-2 w-4 h-4" /> Sign In
+                            </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10">
+                            <Settings className="w-5 h-5 text-white/70" />
+                        </Button>
+                    </div>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Main Controls */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <Tabs defaultValue="hook" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 glass-morphism p-1.5 mb-8 rounded-2xl border border-white/5">
+                                <TabsTrigger value="hook" className="rounded-xl py-3 data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300 font-bold">
+                                    <Sparkles className="w-4 h-4 mr-2" /> Hook Generator
+                                </TabsTrigger>
+                                <TabsTrigger value="rewrite" className="rounded-xl py-3 data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300 font-bold">
+                                    <History className="w-4 h-4 mr-2" /> Content Rewriter
+                                </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="hook" className="space-y-6">
+                                <Card className="glass-morphism border-white/5 shadow-2xl rounded-3xl overflow-hidden relative group">
+                                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity">
+                                        <Zap className="w-32 h-32 text-primary" />
+                                    </div>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-2xl font-black">What are we hooking?</CardTitle>
+                                        <CardDescription className="text-white/50">Enter your topic or a link to transform it into a viral sensation.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <div className="space-y-4">
+                                            <Input
+                                                placeholder="e.g. How to build a SaaS in 30 days..."
+                                                className="bg-white/5 border-white/10 h-14 rounded-2xl focus:ring-2 focus:ring-primary/50 text-lg px-6 transition-all"
+                                                value={prompt}
+                                                onChange={(e) => setPrompt(e.target.value)}
+                                            />
+                                            <Button
+                                                className="w-full h-14 text-lg font-black rounded-2xl bg-gradient-to-r from-primary to-purple-600 hover:shadow-2xl hover:shadow-primary/40 transition-all duration-500 group"
+                                                onClick={() => handleGenerate("hook")}
+                                                disabled={isLoading}
+                                            >
+                                                {isLoading ? (
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin" />
+                                                        <span>Brewing Viral Content...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center">
+                                                        Generate Viral Hooks <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                                    </div>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            <TabsContent value="rewrite" className="space-y-6">
+                                <Card className="glass-morphism border-white/5 shadow-2xl rounded-3xl overflow-hidden relative group">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-2xl font-black">Rewrite for Engagement</CardTitle>
+                                        <CardDescription className="text-white/50">Paste your existing copy and let the AI breathe life into it.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <div className="space-y-4">
+                                            <Textarea
+                                                placeholder="Paste your content here..."
+                                                className="bg-white/5 border-white/10 min-h-[180px] rounded-2xl focus:ring-2 focus:ring-primary/50 text-lg p-6 transition-all scrollbar-hide"
+                                                value={prompt}
+                                                onChange={(e) => setPrompt(e.target.value)}
+                                            />
+                                            <Button
+                                                className="w-full h-14 text-lg font-black rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-2xl hover:shadow-pink-500/40 transition-all duration-500 group"
+                                                onClick={() => handleGenerate("rewrite")}
+                                                disabled={isLoading}
+                                            >
+                                                {isLoading ? (
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin" />
+                                                        <span>Transforming...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center">
+                                                        Make it Viral <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                                    </div>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
+
+                        {/* Result Area */}
+                        {result && (
+                            <Card className="glass-morphism border-white/5 shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95 fade-in duration-500 ring-2 ring-primary/20">
+                                <CardHeader className="bg-primary/10 border-b border-white/5">
+                                    <div className="flex justify-between items-center">
+                                        <CardTitle className="flex items-center text-primary text-xl font-black">
+                                            <Sparkles className="mr-2 w-6 h-6" /> Generated Masterpiece
+                                        </CardTitle>
+                                        <div className="bg-primary/20 text-primary text-[10px] uppercase font-black px-2 py-1 rounded-md">V1.0 AI Engine</div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pt-8">
+                                    <div className="bg-black/60 p-8 rounded-2xl border border-white/5 whitespace-pre-wrap leading-relaxed text-white/90 text-lg font-medium shadow-inner">
+                                        {result}
+                                    </div>
+                                    <div className="flex justify-between items-center mt-6">
+                                        <p className="text-xs text-white/30 font-bold italic underline decoration-primary/30">AI generated content may need fine-tuning</p>
+                                        <Button
+                                            variant="outline"
+                                            className="rounded-xl px-6 border-white/10 hover:bg-white/5 font-bold transition-all hover:scale-105 active:scale-95"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(result)
+                                                toast.success("Copied to clipboard!", {
+                                                    icon: <Zap className="w-4 h-4 text-yellow-400" />
+                                                })
+                                            }}
+                                        >
+                                            Copy to Clipboard
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Sidebar / History Preview */}
+                    <div className="space-y-8">
+                        <Card className="glass-morphism border-white/5 shadow-2xl rounded-3xl overflow-hidden border border-white/5">
+                            <CardHeader className="bg-white/5 py-4">
+                                <CardTitle className="text-lg font-black flex items-center justify-between uppercase tracking-wider">
+                                    <div className="flex items-center">
+                                        <History className="mr-2 w-5 h-5 text-primary" /> History
+                                    </div>
+                                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">{history.length} ITEMS</span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="divide-y divide-white/5">
+                                    {history.length > 0 ? history.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => {
+                                                setPrompt(item.prompt)
+                                                setResult(item.content)
+                                                toast.info("Generation restored")
+                                            }}
+                                            className="p-5 hover:bg-white/10 transition-all cursor-pointer group flex flex-col space-y-2 border-l-4 border-transparent hover:border-primary"
+                                        >
+                                            <p className="text-sm font-bold truncate text-white/90 group-hover:text-white">
+                                                {item.prompt}
+                                            </p>
+                                            <div className="flex justify-between items-center text-[10px] text-white/40 uppercase font-black">
+                                                <span>{item.timestamp?.toDate().toLocaleTimeString()}</span>
+                                                <span className="bg-white/5 px-2 rounded-full border border-white/5">{item.type}</span>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="p-12 text-center text-white/30 space-y-4">
+                                            <div className="bg-white/5 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-white/5">
+                                                <Sparkles className="w-8 h-8 opacity-20" />
+                                            </div>
+                                            <p className="text-xs font-bold uppercase tracking-widest">No history yet</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-5 border-t border-white/5">
+                                    <Button variant="link" className="w-full text-white/30 hover:text-white font-black text-[10px] tracking-widest uppercase transition-colors">
+                                        View Full Studio History
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
