@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -28,7 +28,7 @@ const platforms = [
 const tones = ['Professional', 'Bold', 'Casual', 'Viral', 'Humorous']
 const outputs = ['Rewrite', 'Hooks', 'Hashtags']
 
-export default function DashboardPage() {
+function DashboardContent() {
     const searchParams = useSearchParams()
     const [prompt, setPrompt] = useState("")
     const [platform, setPlatform] = useState(platforms[0].name)
@@ -272,5 +272,13 @@ export default function DashboardPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function DashboardPage() {
+    return (
+        <Suspense fallback={<div>Loading Dashboard...</div>}>
+            <DashboardContent />
+        </Suspense>
     )
 }
