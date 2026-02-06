@@ -57,7 +57,7 @@ export default function SignupPage() {
             <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-500">
                 <div className="text-center space-y-4">
                     <div className="bg-primary/10 p-1 rounded-2xl w-24 h-24 mx-auto shadow-2xl shadow-primary/10 overflow-hidden flex items-center justify-center">
-                        <img src="/logo.png" alt="HookMaster Logo" className="w-full h-full object-cover" />
+                        <img src="/logo.svg" alt="HookMaster Logo" className="w-full h-full object-cover" />
                     </div>
                     <h1 className="text-4xl font-black tracking-tight">Create an account</h1>
                     <p className="text-white/40 font-medium leading-relaxed">Join 2,000+ creators building viral content with AI.</p>

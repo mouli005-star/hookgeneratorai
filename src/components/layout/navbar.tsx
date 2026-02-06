@@ -14,7 +14,7 @@ export default function Navbar() {
                 <div className="flex justify-between h-20 items-center">
                     <Link href="/" className="flex items-center space-x-3 group">
                         <div className="bg-primary/10 p-1 rounded-xl group-hover:scale-110 transition-transform overflow-hidden w-10 h-10 flex items-center justify-center">
-                            <img src="/logo.png" alt="HookMaster Logo" className="w-full h-full object-cover" />
+                            <img src="/logo.svg" alt="HookMaster Logo" className="w-full h-full object-cover" />
                         </div>
                         <span className="text-xl font-black tracking-tight uppercase">
                             HookMaster <span className="text-primary italic">AI</span>

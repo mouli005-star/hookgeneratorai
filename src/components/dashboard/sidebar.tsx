@@ -40,7 +40,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             <div className="p-6 flex items-center justify-between">
                 <Link href="/dashboard" className="flex items-center space-x-3 group overflow-hidden">
                     <div className="bg-primary/10 p-1 rounded-xl flex-shrink-0 w-9 h-9 flex items-center justify-center overflow-hidden">
-                        <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+                        <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
                     </div>
                     {!isCollapsed && (
                         <span className="text-sm font-black tracking-tight uppercase whitespace-nowrap animate-in fade-in slide-in-from-left-4 duration-300">HookMaster AI</span>
