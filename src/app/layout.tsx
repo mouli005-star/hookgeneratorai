@@ -16,6 +16,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "HookMaster AI - Viral Content Generator",
   description: "Turn ordinary content into viral hooks. AI-powered tool to generate engaging hooks, hashtags, and rewrites for Instagram, YouTube, and Twitter/X in seconds.",
+  icons: {
+    icon: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({
